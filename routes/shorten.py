@@ -1,12 +1,9 @@
 from flask import redirect, request, jsonify, Blueprint
-
-# import uuid
 import random
 from functions import generate_short_code
+from db import conn, cursor
 
 shortenerRoute = Blueprint("shortener", __name__)
-
-urls = {}
 
 
 @shortenerRoute.route("/shorten-url", methods=["POST"])
@@ -16,21 +13,29 @@ def url_shortener():
     if not original_url:
         return jsonify({"error": "url is required"}), 400
 
-    short_code_length = random.randint(5, 10)
-    short_code = generate_short_code(short_code_length)
+    short_url_length = random.randint(5, 10)
+    short_url = generate_short_code(short_url_length)
 
-    # short_id = str(uuid.uuid4())[:8]
-    urls[short_code] = original_url
-    short_url = f"http://localhost:5000/{short_code}"
+    cursor.execute(
+        "INSERT INTO urls (short_url, original_url) VALUES (%s, %s)",
+        (short_url, original_url),
+    )
+    conn.commit()
+
+    short_url = f"http://localhost:5000/{short_url}"
     return jsonify({"short_url": short_url}), 201
 
 
-@shortenerRoute.route("/<short_code>")
-def redirect_to_original(short_code):
-    original_url = urls.get(short_code)
-    if not original_url:
+@shortenerRoute.route("/<short_url>")
+def redirect_to_original(short_url):
+    cursor.execute(
+        "SELECT original_url FROM urls WHERE short_url = %s", (short_url,))
+    result = cursor.fetchone()
+    if result:
+        original_url = result[0]
+        return redirect(original_url)
+    else:
         return jsonify({"error": "Invalid short URL"}), 404
-    return redirect(original_url)
 
 
 if __name__ == "__main__":
