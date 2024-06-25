@@ -28,12 +28,11 @@ def url_shortener():
 
 @shortenerRoute.route("/<short_url>")
 def redirect_to_original(short_url):
-    cursor.execute(
-        "SELECT original_url FROM urls WHERE short_url = %s", (short_url,))
+    cursor.execute("SELECT original_url FROM urls WHERE short_url = %s", (short_url,))
     result = cursor.fetchone()
     if result:
         original_url = result[0]
-        return redirect(original_url)
+        return redirect(original_url, code=302)
     else:
         return jsonify({"error": "Invalid short URL"}), 404
 
